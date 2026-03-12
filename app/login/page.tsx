@@ -12,7 +12,7 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     
-    // This talks to the route.ts file we just made!
+    // This talks to our route.ts backend
     await signIn('credentials', {
       email,
       password,
@@ -66,9 +66,19 @@ export default function LoginPage() {
         
         {/* Offline Testing Hint */}
         <div className="mt-6 p-4 bg-blue-50 rounded-lg text-sm text-blue-800 text-center">
-          <p className="font-semibold mb-1">🧪 Offline Testing Mode</p>
-          <p>Email: test@exnohelp.com</p>
-          <p>Password: password</p>
+          <p className="font-semibold mb-2">🧪 Offline Testing Accounts</p>
+          <div className="flex justify-between text-left px-4">
+            <div>
+              <p className="font-bold">Client</p>
+              <p>client@exnohelp.com</p>
+              <p>Pass: password</p>
+            </div>
+            <div>
+              <p className="font-bold">Helper</p>
+              <p>helper@exnohelp.com</p>
+              <p>Pass: password</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

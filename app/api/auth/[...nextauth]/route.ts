@@ -11,9 +11,16 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (credentials?.email === "test@exnohelp.com" && credentials?.password === "password") {
-          return { id: "1", name: "Test User", email: "test@exnohelp.com", role: "CLIENT" };
+        // Test Account 1: The Client
+        if (credentials?.email === "client@exnohelp.com" && credentials?.password === "password") {
+          return { id: "1", name: "Sarah Client", email: "client@exnohelp.com", role: "CLIENT" };
         }
+        
+        // Test Account 2: The Helper
+        if (credentials?.email === "helper@exnohelp.com" && credentials?.password === "password") {
+          return { id: "2", name: "Marcus Helper", email: "helper@exnohelp.com", role: "HELPER" };
+        }
+        
         return null;
       }
     })
