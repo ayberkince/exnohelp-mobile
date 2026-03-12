@@ -1,17 +1,18 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["multiSchema"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["public", "auth"]
 }
+
+// --- USER & IDENTITY ---
 
 model User {
   id               String         @id @default(cuid())
   email            String         @unique
+  passwordHash     String?        // <--- ADD THIS LINE HERE
   role             UserRole       @default(CLIENT)
   firstName        String?
   lastName         String?
@@ -19,23 +20,26 @@ model User {
   isActive         Boolean        @default(true)
   isSuspended      Boolean        @default(false)
   suspensionReason String?
+  
+  // Relations
   clientProfile    ClientProfile?
   helperProfile    HelperProfile?
   sentMessages     Message[]
   reportsFiled     Report[]       @relation("Reporter")
   reportsAgainst   Report[]       @relation("ReportedUser")
   adminActions     AdminAction[]
+  
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
-  @@schema("public")
 }
 
 enum UserRole {
   CLIENT
   HELPER
   ADMIN
-  @@schema("public")
 }
+
+// --- PROFILES ---
 
 model ClientProfile {
   id                   String           @id @default(cuid())
@@ -44,9 +48,10 @@ model ClientProfile {
   emergencyContactName String?
   emergencyContactPhone String?
   defaultCity          String?          @default("Berlin")
+  
+  // Relations
   requests             SupportRequest[]
   bookings             Booking[]
-  @@schema("public")
 }
 
 model HelperProfile {
@@ -59,12 +64,14 @@ model HelperProfile {
   averageRating        Float            @default(0)
   reviewCount          Int              @default(0)
   isAcceptingRequests  Boolean          @default(true)
+
+  // Relations
   categories           HelperServiceCategory[]
   bookings             Booking[]
   verification         HelperVerification?
+
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
-  @@schema("public")
 }
 
 enum HelperStatus {
@@ -73,17 +80,17 @@ enum HelperStatus {
   ACTIVE
   PAUSED
   REJECTED
-  @@schema("public")
 }
 
 model HelperServiceCategory {
   id              String        @id @default(cuid())
   helperProfileId String
   helperProfile   HelperProfile @relation(fields: [helperProfileId], references: [id])
-  categorySlug    String
+  categorySlug    String        
   isActive        Boolean       @default(true)
-  @@schema("public")
 }
+
+// --- VERIFICATION ---
 
 model HelperVerification {
   id                  String             @id @default(cuid())
@@ -93,7 +100,6 @@ model HelperVerification {
   selfieStatus        VerificationStatus @default(NOT_STARTED)
   reviewedAt          DateTime?
   reviewNotes         String?
-  @@schema("public")
 }
 
 enum VerificationStatus {
@@ -102,8 +108,9 @@ enum VerificationStatus {
   APPROVED
   REJECTED
   NEEDS_ACTION
-  @@schema("public")
 }
+
+// --- MARKETPLACE & BOOKINGS ---
 
 model SupportRequest {
   id             String          @id @default(cuid())
@@ -116,10 +123,12 @@ model SupportRequest {
   requestedDate  DateTime
   city           String          @default("Berlin")
   district       String?
+  
+  // Relations
   bookings       Booking[]
+
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
-  @@schema("public")
 }
 
 enum RequestStatus {
@@ -129,7 +138,6 @@ enum RequestStatus {
   BOOKED
   CANCELED
   EXPIRED
-  @@schema("public")
 }
 
 model Booking {
@@ -140,16 +148,19 @@ model Booking {
   client            ClientProfile   @relation(fields: [clientId], references: [id])
   helperId          String
   helper            HelperProfile   @relation(fields: [helperId], references: [id])
+  
   status            BookingStatus   @default(PENDING_ACCEPTANCE)
   scheduledDate     DateTime
   totalPrice        Decimal
   paymentStatus     PaymentStatus   @default(UNPAID)
+  
+  // Relations
   messages          Message[]
   reviews           Review[]
   reports           Report[]
+
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
-  @@schema("public")
 }
 
 enum BookingStatus {
@@ -160,7 +171,6 @@ enum BookingStatus {
   COMPLETED
   CANCELED
   DISPUTED
-  @@schema("public")
 }
 
 enum PaymentStatus {
@@ -168,8 +178,9 @@ enum PaymentStatus {
   PAID
   FAILED
   REFUNDED
-  @@schema("public")
 }
+
+// --- COMMUNICATION & REVIEWS ---
 
 model Message {
   id             String   @id @default(cuid())
@@ -180,7 +191,6 @@ model Message {
   body           String
   readAt         DateTime?
   createdAt      DateTime @default(now())
-  @@schema("public")
 }
 
 model Review {
@@ -191,8 +201,9 @@ model Review {
   rating         Int
   comment        String?
   createdAt      DateTime @default(now())
-  @@schema("public")
 }
+
+// --- TRUST, SAFETY & ADMIN ---
 
 model Report {
   id             String       @id @default(cuid())
@@ -204,8 +215,8 @@ model Report {
   booking        Booking?     @relation(fields: [bookingId], references: [id])
   description    String
   status         ReportStatus @default(OPEN)
+  
   createdAt      DateTime     @default(now())
-  @@schema("public")
 }
 
 enum ReportStatus {
@@ -213,7 +224,6 @@ enum ReportStatus {
   UNDER_REVIEW
   ACTION_TAKEN
   DISMISSED
-  @@schema("public")
 }
 
 model AdminAction {
@@ -223,5 +233,4 @@ model AdminAction {
   actionType  String
   notes       String?
   createdAt   DateTime @default(now())
-  @@schema("public")
 }
