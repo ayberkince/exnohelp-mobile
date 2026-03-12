@@ -1,0 +1,227 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["public", "auth"]
+}
+
+model User {
+  id               String         @id @default(cuid())
+  email            String         @unique
+  role             UserRole       @default(CLIENT)
+  firstName        String?
+  lastName         String?
+  profilePhotoUrl  String?
+  isActive         Boolean        @default(true)
+  isSuspended      Boolean        @default(false)
+  suspensionReason String?
+  clientProfile    ClientProfile?
+  helperProfile    HelperProfile?
+  sentMessages     Message[]
+  reportsFiled     Report[]       @relation("Reporter")
+  reportsAgainst   Report[]       @relation("ReportedUser")
+  adminActions     AdminAction[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  @@schema("public")
+}
+
+enum UserRole {
+  CLIENT
+  HELPER
+  ADMIN
+  @@schema("public")
+}
+
+model ClientProfile {
+  id                   String           @id @default(cuid())
+  userId               String           @unique
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emergencyContactName String?
+  emergencyContactPhone String?
+  defaultCity          String?          @default("Berlin")
+  requests             SupportRequest[]
+  bookings             Booking[]
+  @@schema("public")
+}
+
+model HelperProfile {
+  id                   String           @id @default(cuid())
+  userId               String           @unique
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio                  String?
+  hourlyRate           Decimal?
+  profileStatus        HelperStatus     @default(DRAFT)
+  averageRating        Float            @default(0)
+  reviewCount          Int              @default(0)
+  isAcceptingRequests  Boolean          @default(true)
+  categories           HelperServiceCategory[]
+  bookings             Booking[]
+  verification         HelperVerification?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  @@schema("public")
+}
+
+enum HelperStatus {
+  DRAFT
+  PENDING_VERIFICATION
+  ACTIVE
+  PAUSED
+  REJECTED
+  @@schema("public")
+}
+
+model HelperServiceCategory {
+  id              String        @id @default(cuid())
+  helperProfileId String
+  helperProfile   HelperProfile @relation(fields: [helperProfileId], references: [id])
+  categorySlug    String
+  isActive        Boolean       @default(true)
+  @@schema("public")
+}
+
+model HelperVerification {
+  id                  String             @id @default(cuid())
+  helperProfileId     String             @unique
+  helperProfile       HelperProfile      @relation(fields: [helperProfileId], references: [id])
+  idDocumentStatus    VerificationStatus @default(NOT_STARTED)
+  selfieStatus        VerificationStatus @default(NOT_STARTED)
+  reviewedAt          DateTime?
+  reviewNotes         String?
+  @@schema("public")
+}
+
+enum VerificationStatus {
+  NOT_STARTED
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_ACTION
+  @@schema("public")
+}
+
+model SupportRequest {
+  id             String          @id @default(cuid())
+  clientId       String
+  client         ClientProfile   @relation(fields: [clientId], references: [id])
+  categorySlug   String
+  title          String
+  description    String
+  status         RequestStatus   @default(OPEN)
+  requestedDate  DateTime
+  city           String          @default("Berlin")
+  district       String?
+  bookings       Booking[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  @@schema("public")
+}
+
+enum RequestStatus {
+  DRAFT
+  OPEN
+  MATCHED
+  BOOKED
+  CANCELED
+  EXPIRED
+  @@schema("public")
+}
+
+model Booking {
+  id                String          @id @default(cuid())
+  requestId         String?
+  request           SupportRequest? @relation(fields: [requestId], references: [id])
+  clientId          String
+  client            ClientProfile   @relation(fields: [clientId], references: [id])
+  helperId          String
+  helper            HelperProfile   @relation(fields: [helperId], references: [id])
+  status            BookingStatus   @default(PENDING_ACCEPTANCE)
+  scheduledDate     DateTime
+  totalPrice        Decimal
+  paymentStatus     PaymentStatus   @default(UNPAID)
+  messages          Message[]
+  reviews           Review[]
+  reports           Report[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  @@schema("public")
+}
+
+enum BookingStatus {
+  PENDING_ACCEPTANCE
+  AWAITING_PAYMENT
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+  DISPUTED
+  @@schema("public")
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  FAILED
+  REFUNDED
+  @@schema("public")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  bookingId      String
+  booking        Booking  @relation(fields: [bookingId], references: [id])
+  senderId       String
+  sender         User     @relation(fields: [senderId], references: [id])
+  body           String
+  readAt         DateTime?
+  createdAt      DateTime @default(now())
+  @@schema("public")
+}
+
+model Review {
+  id             String   @id @default(cuid())
+  bookingId      String
+  booking        Booking  @relation(fields: [bookingId], references: [id])
+  reviewerId     String
+  rating         Int
+  comment        String?
+  createdAt      DateTime @default(now())
+  @@schema("public")
+}
+
+model Report {
+  id             String       @id @default(cuid())
+  reporterId     String
+  reporter       User         @relation("Reporter", fields: [reporterId], references: [id])
+  reportedUserId String?
+  reportedUser   User?        @relation("ReportedUser", fields: [reportedUserId], references: [id])
+  bookingId      String?
+  booking        Booking?     @relation(fields: [bookingId], references: [id])
+  description    String
+  status         ReportStatus @default(OPEN)
+  createdAt      DateTime     @default(now())
+  @@schema("public")
+}
+
+enum ReportStatus {
+  OPEN
+  UNDER_REVIEW
+  ACTION_TAKEN
+  DISMISSED
+  @@schema("public")
+}
+
+model AdminAction {
+  id          String   @id @default(cuid())
+  adminId     String
+  admin       User     @relation(fields: [adminId], references: [id])
+  actionType  String
+  notes       String?
+  createdAt   DateTime @default(now())
+  @@schema("public")
+}
