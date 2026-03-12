@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 const handler = NextAuth({
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     CredentialsProvider({
       name: "Email and Password",
@@ -10,19 +11,15 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // When your internet is back, we will connect this to Prisma!
-        // For now, this is a placeholder that lets you test the login UI offline.
-        
         if (credentials?.email === "test@exnohelp.com" && credentials?.password === "password") {
           return { id: "1", name: "Test User", email: "test@exnohelp.com", role: "CLIENT" };
         }
-        
-        return null; // Login failed
+        return null;
       }
     })
   ],
   pages: {
-    signIn: '/login', // We will build this custom page next
+    signIn: '/login',
   },
   session: {
     strategy: "jwt",
