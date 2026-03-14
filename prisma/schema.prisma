@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "binary"
 }
 
 datasource db {
@@ -12,7 +13,7 @@ datasource db {
 model User {
   id               String         @id @default(cuid())
   email            String         @unique
-  passwordHash     String?        // <--- ADD THIS LINE HERE
+  passwordHash     String?        
   role             UserRole       @default(CLIENT)
   firstName        String?
   lastName         String?
@@ -42,36 +43,48 @@ enum UserRole {
 // --- PROFILES ---
 
 model ClientProfile {
-  id                   String           @id @default(cuid())
-  userId               String           @unique
-  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emergencyContactName String?
+  id                    String            @id @default(cuid())
+  userId                String            @unique
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Day 4 Onboarding Fields
+  emergencyContactName  String?
   emergencyContactPhone String?
-  defaultCity          String?          @default("Berlin")
+  city                  String?           @default("Berlin")
+  district              String?
+  preferredLanguage     String?           @default("English")
+  accessibilityNotes    String?
   
   // Relations
-  requests             SupportRequest[]
-  bookings             Booking[]
+  requests              SupportRequest[]
+  bookings              Booking[]
 }
 
 model HelperProfile {
-  id                   String           @id @default(cuid())
-  userId               String           @unique
-  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio                  String?
-  hourlyRate           Decimal?
-  profileStatus        HelperStatus     @default(DRAFT)
-  averageRating        Float            @default(0)
-  reviewCount          Int              @default(0)
-  isAcceptingRequests  Boolean          @default(true)
+  id                  String            @id @default(cuid())
+  userId              String            @unique
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Public Profile Fields
+  bio                 String?
+  hourlyRate          Decimal?
+  city                String?
+  district            String?
+  transportMode       String?           // e.g., "Car", "Public Transport", "Bike"
+  
+  // Stats & Status
+  profileStatus       HelperStatus      @default(DRAFT)
+  averageRating       Float             @default(0)
+  reviewCount         Int               @default(0)
+  isAcceptingRequests Boolean           @default(true)
 
   // Relations
-  categories           HelperServiceCategory[]
-  bookings             Booking[]
-  verification         HelperVerification?
+  categories          HelperServiceCategory[]
+  bookings            Booking[]
+  verification        HelperVerification?
 
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 }
 
 enum HelperStatus {
@@ -93,13 +106,13 @@ model HelperServiceCategory {
 // --- VERIFICATION ---
 
 model HelperVerification {
-  id                  String             @id @default(cuid())
-  helperProfileId     String             @unique
-  helperProfile       HelperProfile      @relation(fields: [helperProfileId], references: [id])
-  idDocumentStatus    VerificationStatus @default(NOT_STARTED)
-  selfieStatus        VerificationStatus @default(NOT_STARTED)
-  reviewedAt          DateTime?
-  reviewNotes         String?
+  id                String             @id @default(cuid())
+  helperProfileId   String             @unique
+  helperProfile     HelperProfile      @relation(fields: [helperProfileId], references: [id])
+  idDocumentStatus  VerificationStatus @default(NOT_STARTED)
+  selfieStatus      VerificationStatus @default(NOT_STARTED)
+  reviewedAt        DateTime?
+  reviewNotes       String?
 }
 
 enum VerificationStatus {

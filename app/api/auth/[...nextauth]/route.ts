@@ -1,36 +1,58 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { prisma } from "@/lib/prisma"; // This is the file we just made!
+import bcrypt from "bcrypt";
 
 const handler = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
-  providers: [
-    CredentialsProvider({
-      name: "Email and Password",
-      credentials: {
-        email: { label: "Email", type: "email", placeholder: "hello@exnohelp.com" },
-        password: { label: "Password", type: "password" }
-      },
-      async authorize(credentials) {
-        // Test Account 1: The Client
-        if (credentials?.email === "client@exnohelp.com" && credentials?.password === "password") {
-          return { id: "1", name: "Sarah Client", email: "client@exnohelp.com", role: "CLIENT" };
-        }
-        
-        // Test Account 2: The Helper
-        if (credentials?.email === "helper@exnohelp.com" && credentials?.password === "password") {
-          return { id: "2", name: "Marcus Helper", email: "helper@exnohelp.com", role: "HELPER" };
-        }
-        
-        return null;
-      }
-    })
-  ],
-  pages: {
-    signIn: '/login',
-  },
   session: {
     strategy: "jwt",
   },
+  pages: {
+    signIn: "/login",
+  },
+  providers: [
+    CredentialsProvider({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Missing email or password");
+        }
+
+        // 1. Find the user in YOUR REAL DATABASE
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email }
+        });
+
+        // 2. If user doesn't exist or hasn't set a password yet
+        if (!user || !user.passwordHash) {
+          throw new Error("No user found with this email");
+        }
+
+        // 3. Check if password matches the hashed version
+        const isPasswordCorrect = await bcrypt.compare(
+          credentials.password,
+          user.passwordHash
+        );
+
+        if (!isPasswordCorrect) {
+          throw new Error("Invalid password");
+        }
+
+        // 4. Return the user (this becomes the session)
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.firstName ? `${user.firstName} ${user.lastName}` : user.email,
+          role: user.role,
+        };
+      }
+    })
+  ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
