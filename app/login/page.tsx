@@ -1,34 +1,46 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
+import Link from 'next/link';
 import { useState } from 'react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
-    // This talks to our route.ts backend
-    await signIn('credentials', {
+    const result = await signIn('credentials', {
       email,
       password,
-      callbackUrl: '/onboarding', // Where to send them after logging in
+      redirect: true,
+      callbackUrl: '/onboarding', 
     });
-    
-    setIsLoading(false);
+
+    if (result?.error) {
+      setError("Invalid email or password");
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="max-w-md w-full p-8 bg-white rounded-xl shadow-lg">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
           <p className="text-gray-500 mt-2">Sign in to Exnohelp</p>
         </div>
+
+        {error && (
+          <div className="bg-red-50 text-red-500 p-3 rounded-lg mb-4 text-sm text-center">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -64,21 +76,16 @@ export default function LoginPage() {
           </button>
         </form>
         
-        {/* Offline Testing Hint */}
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg text-sm text-blue-800 text-center">
-          <p className="font-semibold mb-2">🧪 Offline Testing Accounts</p>
-          <div className="flex justify-between text-left px-4">
-            <div>
-              <p className="font-bold">Client</p>
-              <p>client@exnohelp.com</p>
-              <p>Pass: password</p>
-            </div>
-            <div>
-              <p className="font-bold">Helper</p>
-              <p>helper@exnohelp.com</p>
-              <p>Pass: password</p>
-            </div>
-          </div>
+        <div className="mt-6 text-center border-t pt-6">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{" "}
+            <Link 
+              href="/register" 
+              className="font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              Create one now
+            </Link>
+          </p>
         </div>
       </div>
     </div>

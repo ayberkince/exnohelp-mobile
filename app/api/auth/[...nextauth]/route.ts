@@ -54,19 +54,26 @@ const handler = NextAuth({
     })
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // When user first logs in
       if (user) {
-        token.role = (user as any).role;
+        token.id = user.id;
+        token.role = user.role;
+      }
+      // THE FIX: When we trigger an update from the frontend!
+      if (trigger === "update" && session?.role) {
+        token.role = session.role;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).role = token.role;
+        session.user.id = token.id as string;
+        session.user.role = token.role as string;
       }
       return session;
     }
-  }
+  },
 });
 
 export { handler as GET, handler as POST };

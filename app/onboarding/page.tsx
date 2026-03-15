@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { SessionProvider, useSession } from 'next-auth/react';
 
-export default function OnboardingWizard() {
-  const [step, setStep] = useState(1); // 1: Role, 2: Profile, 3: Emergency, 4: Safety
+// We put the logic inside a sub-component so we can use the useSession hook
+function OnboardingWizard() {
+  const [step, setStep] = useState(1);
   const [role, setRole] = useState<'CLIENT' | 'HELPER' | null>(null);
   const [formData, setFormData] = useState({
     city: '',
@@ -12,22 +14,38 @@ export default function OnboardingWizard() {
     emergencyName: '',
     emergencyPhone: '',
   });
+  
+  const { update } = useSession(); // The magic wand to fix the token
   const router = useRouter();
 
   const handleComplete = async () => {
-    // This calls your update-role API but we can expand it to save everything
-    await fetch('/api/user/update-role', {
-      method: 'POST',
-      body: JSON.stringify({ ...formData, role }),
-    });
-    router.push(role === 'CLIENT' ? '/client' : '/helper');
+    try {
+      const res = await fetch('/api/user/update-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, role }),
+      });
+
+      if (res.ok) {
+        // 1. UPDATE THE ID BADGE SECURELY
+        await update({ role: role });
+        
+        // 2. REDIRECT SAFELY
+        window.location.href = role === 'CLIENT' ? '/client' : '/helper';
+      } else {
+        const errorText = await res.text();
+        alert(`Failed to save: ${errorText}`);
+      }
+    } catch (error) {
+      console.error("Fetch error:", error);
+      alert("Network error.");
+    }
   };
 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8">
         
-        {/* STEP 1: ROLE SELECTION */}
         {step === 1 && (
           <div className="animate-in fade-in slide-in-from-bottom-4">
             <h2 className="text-2xl font-bold mb-2">Welcome to Exnohelp</h2>
@@ -45,7 +63,6 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* STEP 2: BASIC PROFILE (City/District) */}
         {step === 2 && (
           <div className="animate-in fade-in">
             <h2 className="text-2xl font-bold mb-6">Where are you located?</h2>
@@ -65,7 +82,6 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* STEP 3: EMERGENCY CONTACT (Trust Step) */}
         {step === 3 && (
           <div className="animate-in fade-in">
             <h2 className="text-2xl font-bold mb-2">Emergency Contact</h2>
@@ -86,7 +102,6 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* STEP 4: SAFETY BOUNDARIES */}
         {step === 4 && (
           <div className="animate-in fade-in">
             <div className="bg-red-50 p-4 rounded-2xl mb-6">
@@ -103,5 +118,14 @@ export default function OnboardingWizard() {
 
       </div>
     </div>
+  );
+}
+
+// We wrap the page in a SessionProvider so useSession() has access to NextAuth
+export default function OnboardingPage() {
+  return (
+    <SessionProvider>
+      <OnboardingWizard />
+    </SessionProvider>
   );
 }
