@@ -1,235 +1,78 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
-  provider   = "prisma-client-js"
-  engineType = "binary"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-// --- USER & IDENTITY ---
-
-model User {
-  id               String         @id @default(cuid())
-  email            String         @unique
-  passwordHash     String?        
-  role             UserRole       @default(CLIENT)
-  firstName        String?
-  lastName         String?
-  profilePhotoUrl  String?
-  isActive         Boolean        @default(true)
-  isSuspended      Boolean        @default(false)
-  suspensionReason String?
-  
-  // Relations
-  clientProfile    ClientProfile?
-  helperProfile    HelperProfile?
-  sentMessages     Message[]
-  reportsFiled     Report[]       @relation("Reporter")
-  reportsAgainst   Report[]       @relation("ReportedUser")
-  adminActions     AdminAction[]
-  
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-}
-
-enum UserRole {
+// --- ENUMS (State Machines) ---
+enum Role {
   CLIENT
   HELPER
   ADMIN
 }
 
-// --- PROFILES ---
-
-model ClientProfile {
-  id                    String            @id @default(cuid())
-  userId                String            @unique
-  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  // Day 4 Onboarding Fields
-  emergencyContactName  String?
-  emergencyContactPhone String?
-  city                  String?           @default("Berlin")
-  district              String?
-  preferredLanguage     String?           @default("English")
-  accessibilityNotes    String?
-  
-  // Relations
-  requests              SupportRequest[]
-  bookings              Booking[]
-}
-
-model HelperProfile {
-  id                  String            @id @default(cuid())
-  userId              String            @unique
-  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  // Public Profile Fields
-  bio                 String?
-  hourlyRate          Decimal?
-  city                String?
-  district            String?
-  transportMode       String?           // e.g., "Car", "Public Transport", "Bike"
-  
-  // Stats & Status
-  profileStatus       HelperStatus      @default(DRAFT)
-  averageRating       Float             @default(0)
-  reviewCount         Int               @default(0)
-  isAcceptingRequests Boolean           @default(true)
-
-  // Relations
-  categories          HelperServiceCategory[]
-  bookings            Booking[]
-  verification        HelperVerification?
-
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-}
-
-enum HelperStatus {
-  DRAFT
-  PENDING_VERIFICATION
-  ACTIVE
-  PAUSED
-  REJECTED
-}
-
-model HelperServiceCategory {
-  id              String        @id @default(cuid())
-  helperProfileId String
-  helperProfile   HelperProfile @relation(fields: [helperProfileId], references: [id])
-  categorySlug    String        
-  isActive        Boolean       @default(true)
-}
-
-// --- VERIFICATION ---
-
-model HelperVerification {
-  id                String             @id @default(cuid())
-  helperProfileId   String             @unique
-  helperProfile     HelperProfile      @relation(fields: [helperProfileId], references: [id])
-  idDocumentStatus  VerificationStatus @default(NOT_STARTED)
-  selfieStatus      VerificationStatus @default(NOT_STARTED)
-  reviewedAt        DateTime?
-  reviewNotes       String?
-}
-
-enum VerificationStatus {
-  NOT_STARTED
-  PENDING
-  APPROVED
-  REJECTED
-  NEEDS_ACTION
-}
-
-// --- MARKETPLACE & BOOKINGS ---
-
-model SupportRequest {
-  id             String          @id @default(cuid())
-  clientId       String
-  client         ClientProfile   @relation(fields: [clientId], references: [id])
-  categorySlug   String
-  title          String
-  description    String
-  status         RequestStatus   @default(OPEN)
-  requestedDate  DateTime
-  city           String          @default("Berlin")
-  district       String?
-  
-  // Relations
-  bookings       Booking[]
-
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-}
-
 enum RequestStatus {
-  DRAFT
   OPEN
   MATCHED
-  BOOKED
   CANCELED
-  EXPIRED
-}
-
-model Booking {
-  id                String          @id @default(cuid())
-  requestId         String?
-  request           SupportRequest? @relation(fields: [requestId], references: [id])
-  clientId          String
-  client            ClientProfile   @relation(fields: [clientId], references: [id])
-  helperId          String
-  helper            HelperProfile   @relation(fields: [helperId], references: [id])
-  
-  status            BookingStatus   @default(PENDING_ACCEPTANCE)
-  scheduledDate     DateTime
-  totalPrice        Decimal
-  paymentStatus     PaymentStatus   @default(UNPAID)
-  
-  // Relations
-  messages          Message[]
-  reviews           Review[]
-  reports           Report[]
-
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
 }
 
 enum BookingStatus {
-  PENDING_ACCEPTANCE
-  AWAITING_PAYMENT
+  PENDING
   CONFIRMED
-  IN_PROGRESS
   COMPLETED
-  CANCELED
-  DISPUTED
+  CANCELED_BY_CLIENT
+  CANCELED_BY_HELPER
+  CANCELED_BY_PLATFORM
 }
 
+// Day 6: Financial State Machines
 enum PaymentStatus {
   UNPAID
+  AUTHORIZED
   PAID
   FAILED
   REFUNDED
+  PARTIALLY_REFUNDED
 }
 
-// --- COMMUNICATION & REVIEWS ---
-
-model Message {
-  id             String   @id @default(cuid())
-  bookingId      String
-  booking        Booking  @relation(fields: [bookingId], references: [id])
-  senderId       String
-  sender         User     @relation(fields: [senderId], references: [id])
-  body           String
-  readAt         DateTime?
-  createdAt      DateTime @default(now())
+enum PayoutStatus {
+  NOT_READY
+  PENDING
+  PAID_OUT
+  HELD
+  REVERSED
 }
 
-model Review {
-  id             String   @id @default(cuid())
-  bookingId      String
-  booking        Booking  @relation(fields: [bookingId], references: [id])
-  reviewerId     String
-  rating         Int
-  comment        String?
-  createdAt      DateTime @default(now())
+enum RefundStatus {
+  NONE
+  REQUESTED
+  UNDER_REVIEW
+  APPROVED_FULL
+  APPROVED_PARTIAL
+  DENIED
+  COMPLETED
 }
 
-// --- TRUST, SAFETY & ADMIN ---
-
-model Report {
-  id             String       @id @default(cuid())
-  reporterId     String
-  reporter       User         @relation("Reporter", fields: [reporterId], references: [id])
-  reportedUserId String?
-  reportedUser   User?        @relation("ReportedUser", fields: [reportedUserId], references: [id])
-  bookingId      String?
-  booking        Booking?     @relation(fields: [bookingId], references: [id])
-  description    String
-  status         ReportStatus @default(OPEN)
-  
-  createdAt      DateTime     @default(now())
+// Day 7: Trust & Safety State Machines
+enum ReportType {
+  NO_SHOW
+  SEVERE_LATENESS
+  UNSAFE_BEHAVIOR
+  HARASSMENT
+  DISCRIMINATION
+  PROHIBITED_SERVICE
+  OFF_PLATFORM_PAYMENT
+  FRAUD
+  SUSPICIOUS_IDENTITY
+  OTHER
 }
 
 enum ReportStatus {
@@ -237,13 +80,245 @@ enum ReportStatus {
   UNDER_REVIEW
   ACTION_TAKEN
   DISMISSED
+  CLOSED
+}
+
+enum EnforcementLevel {
+  NONE
+  WARNING
+  RESTRICTED
+  SUSPENDED
+  BANNED
+}
+
+// Day 8: Operator State Machines
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_ACTION
+}
+
+// Day 9: Communication State Machines
+enum NotificationType {
+  BOOKING
+  PAYMENT
+  SAFETY
+  ACCOUNT
+  SYSTEM
+}
+
+// --- AUTHENTICATION MODELS (NextAuth) ---
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          Role?
+  
+  // Day 7: Platform enforcement
+  enforcement   EnforcementLevel @default(NONE)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  clientProfile ClientProfile?
+  helperProfile HelperProfile?
+
+  // Day 7: Report Tracking
+  reportsFiled   Report[] @relation("Reporter")
+  reportsAgainst Report[] @relation("ReportedUser")
+
+  // Day 9: Communication Tracking
+  notifications  Notification[]
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// --- PLATFORM PROFILES ---
+model ClientProfile {
+  id                    String  @id @default(cuid())
+  userId                String  @unique
+  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city                  String?
+  district              String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+
+  requests SupportRequest[]
+  bookings Booking[]
+}
+
+model HelperProfile {
+  id       String  @id @default(cuid())
+  userId   String  @unique
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city     String?
+  district String?
+
+  // Day 8: Verification Ops
+  verificationStatus VerificationStatus @default(PENDING)
+  adminNotes         String?            @db.Text
+
+  bookings Booking[]
+  payouts  Payout[] 
+}
+
+// --- MARKETPLACE ENGINE ---
+model SupportRequest {
+  id            String        @id @default(cuid())
+  clientId      String
+  client        ClientProfile @relation(fields: [clientId], references: [id])
+  categorySlug  String
+  title         String
+  description   String?
+  requestedDate DateTime
+  city          String
+  district      String
+  status        RequestStatus @default(OPEN)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  booking Booking?
+}
+
+model Booking {
+  id        String          @id @default(cuid())
+  clientId  String
+  client    ClientProfile   @relation(fields: [clientId], references: [id])
+  helperId  String
+  helper    HelperProfile   @relation(fields: [helperId], references: [id])
+  requestId String?         @unique
+  request   SupportRequest? @relation(fields: [requestId], references: [id])
+
+  scheduledAt DateTime
+  status      BookingStatus @default(PENDING)
+
+  // Day 6: Pricing Logistics
+  helperAmount Float @default(0.0)
+  platformFee  Float @default(0.0)
+  totalAmount  Float @default(0.0)
+
+  // Day 6: Financial Links
+  payment Payment?
+  payout  Payout?
+
+  // Day 7: Incident Tracking Links
+  reports Report[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --- DAY 6: FINANCIAL ENGINE ---
+model Payment {
+  id        String  @id @default(cuid())
+  bookingId String  @unique
+  booking   Booking @relation(fields: [bookingId], references: [id])
+
+  amount       Float
+  status       PaymentStatus @default(UNPAID)
+  refundStatus RefundStatus  @default(NONE)
+
+  stripePaymentIntentId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payout {
+  id        String        @id @default(cuid())
+  bookingId String        @unique
+  booking   Booking       @relation(fields: [bookingId], references: [id])
+  helperId  String
+  helper    HelperProfile @relation(fields: [helperId], references: [id])
+
+  amount Float
+  status PayoutStatus @default(NOT_READY)
+
+  stripeTransferId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --- DAY 7 & 8: TRUST, SAFETY & OPS ENGINE ---
+model Report {
+  id          String       @id @default(cuid())
+  type        ReportType
+  status      ReportStatus @default(OPEN)
+  description String       @db.Text
+  
+  reporterId  String
+  reporter    User         @relation("Reporter", fields: [reporterId], references: [id])
+  
+  reportedUserId String?
+  reportedUser   User?     @relation("ReportedUser", fields: [reportedUserId], references: [id])
+  
+  bookingId   String?
+  booking     Booking?     @relation(fields: [bookingId], references: [id])
+  
+  adminNotes  String?      @db.Text
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  adminActions AdminAction[]
 }
 
 model AdminAction {
   id          String   @id @default(cuid())
-  adminId     String
-  admin       User     @relation(fields: [adminId], references: [id])
-  actionType  String
-  notes       String?
+  reportId    String?
+  report      Report?  @relation(fields: [reportId], references: [id])
+  
+  adminId     String   
+  actionTaken String   
+  notes       String?  @db.Text
+  
   createdAt   DateTime @default(now())
+}
+
+// --- DAY 9: COMMUNICATION ENGINE ---
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  isRead    Boolean          @default(false)
+  link      String?          // Optional URL to redirect the user when clicked
+  
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 }
