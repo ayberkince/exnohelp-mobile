@@ -135,6 +135,9 @@ model User {
 
   // Day 9: Communication Tracking
   notifications  Notification[]
+
+  // Day 10: Analytics & Telemetry
+  analyticsEvents AnalyticsEvent[]
 }
 
 model Account {
@@ -317,8 +320,28 @@ model Notification {
   title     String
   message   String           @db.Text
   isRead    Boolean          @default(false)
-  link      String?          // Optional URL to redirect the user when clicked
+  link      String?          
   
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
+}
+
+// --- DAY 10: ANALYTICS & TELEMETRY ENGINE ---
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  eventName   String   
+  
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userRole    String?  
+  
+  targetId    String?  
+  properties  Json?    
+  
+  createdAt   DateTime @default(now())
+
+  // Indexes to make graph generation fast!
+  @@index([eventName])
+  @@index([createdAt])
+  @@index([userId])
 }

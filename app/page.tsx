@@ -1,56 +1,62 @@
+'use client';
+
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import Link from "next/link";
 
 export default function HomePage() {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-stone-50 p-6">
-      <div className="max-w-md w-full flex flex-col items-center text-center">
-        
-        {/* Logo Section */}
-        <div className="w-16 h-16 bg-[#0f4c3a] rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-        </div>
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
-        <h1 className="text-4xl font-bold text-stone-900 mb-3">Begleit</h1>
-        <p className="text-stone-600 mb-8 max-w-xs">
-          Trusted non-medical support for your appointments in Berlin.
+  useEffect(() => {
+    // 🚦 THE TRAFFIC CONTROLLER
+    if (status === "authenticated" && session?.user) {
+      // @ts-ignore - We know role exists because we added it to the session!
+      const role = session.user.role;
+
+      if (role === "CLIENT") {
+        router.push("/client/dashboard");
+      } else if (role === "HELPER") {
+        router.push("/helper/dashboard");
+      } else if (role === "ADMIN") {
+        router.push("/admin/dashboard");
+      } else {
+        // If they genuinely have no role yet, send to onboarding
+        router.push("/onboarding");
+      }
+    }
+  }, [session, status, router]);
+
+  // While checking the session, show a clean loading state
+  if (status === "loading") {
+    return (
+      <main className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="w-12 h-12 bg-stone-200 rounded-xl mb-4"></div>
+          <p className="text-stone-400 font-bold">Verifying access...</p>
+        </div>
+      </main>
+    );
+  }
+
+  // If NOT logged in, show a basic landing page
+  if (status === "unauthenticated") {
+    return (
+      <main className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 bg-stone-900 text-white rounded-2xl flex items-center justify-center text-3xl font-black mb-6 shadow-lg">
+          B.
+        </div>
+        <h1 className="text-4xl font-black text-stone-900 mb-4">Trusted Non-Medical Support</h1>
+        <p className="text-stone-500 mb-8 max-w-md mx-auto text-lg">
+          Connect with verified helpers in your area for everyday companionship and assistance.
         </p>
+        <Link href="/auth/login" className="px-8 py-4 bg-emerald-600 text-white rounded-full font-bold text-lg hover:bg-emerald-700 transition-all shadow-md">
+          Sign In to Platform
+        </Link>
+      </main>
+    );
+  }
 
-        {/* Trust Badge */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex items-start gap-3 mb-8 w-full text-left">
-          <div className="text-emerald-600 mt-0.5">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-stone-900">Safe & Verified</p>
-            <p className="text-xs text-stone-500">All helpers undergo ID checks and agree to strict non-medical boundaries.</p>
-          </div>
-        </div>
-
-        {/* Authentication Buttons */}
-        <div className="w-full space-y-3">
-          <Link 
-            href="/register" 
-            className="w-full block text-center py-4 bg-[#0f4c3a] text-white rounded-2xl font-bold hover:bg-[#0a3629] transition-colors shadow-sm"
-          >
-            Create an Account
-          </Link>
-          <Link 
-            href="/login" 
-            className="w-full block text-center py-4 bg-white text-[#0f4c3a] border-2 border-stone-200 rounded-2xl font-bold hover:bg-stone-50 transition-colors"
-          >
-            Sign In
-          </Link>
-        </div>
-
-        <p className="text-xs text-stone-400 mt-8 max-w-xs">
-          By continuing, you agree to our Terms of Service and Privacy Policy.
-        </p>
-
-      </div>
-    </div>
-  );
+  return null;
 }

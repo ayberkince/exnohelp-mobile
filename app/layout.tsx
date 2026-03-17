@@ -1,6 +1,11 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { Navbar } from "@/components/shared/Navbar";
+
+// Make sure you import your Providers component here! 
+// (Adjust the path if your Providers file is somewhere else)
+import { Providers } from './Providers'; 
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -17,7 +22,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        {children}
+        <Providers>
+          <Navbar /> {/* 👈 Navbar sits at the very top */}
+          {children} {/* 👈 The rest of your app loads underneath it */}
+        </Providers>
       </body>
     </html>
   )

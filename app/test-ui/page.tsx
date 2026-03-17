@@ -7,8 +7,10 @@ import { HelperEarnings } from "@/components/shared/HelperEarnings";
 import { ReportForm } from "@/components/shared/ReportForm";
 import { AccountReviewScreen } from "@/components/shared/AccountReviewScreen";
 import { AdminDashboard } from "@/components/shared/AdminDashboard";
+import { NotificationFeed } from "@/components/shared/NotificationFeed";
 import { calculateBookingPrice } from "@/lib/pricing";
 import { calculateRefundEligibility } from "@/lib/cancellations";
+import { AnalyticsDashboard } from "@/components/shared/AnalyticsDashboard";
 
 export default function TestUIPage() {
   // --- LIVE INTERACTIVE STATE ---
@@ -27,17 +29,25 @@ export default function TestUIPage() {
 
   const mockFinancials = {
     totalEarned: 320.50,
-    pendingAmount: pricing.helperAmount, // Dynamically showing what the helper will earn
+    pendingAmount: pricing.helperAmount,
     transactions: [
       { id: "tx_1", date: "Mar 16, 2026", clientName: "Current Test Booking", amount: pricing.helperAmount, status: "PENDING" as const },
       { id: "tx_2", date: "Mar 12, 2026", clientName: "Maria G.", amount: 35.00, status: "PAID_OUT" as const },
     ]
   };
 
+  // FAKE DATA FOR DAY 9 NOTIFICATIONS
+  const mockNotifications: any[] = [
+    { id: 'n1', type: 'BOOKING', title: 'Booking Confirmed!', message: 'Your support session with Sarah M. is confirmed for Friday.', time: '2 mins ago', isRead: false },
+    { id: 'n2', type: 'PAYMENT', title: 'Payment Successful', message: 'Your payment of €45.00 was processed successfully.', time: '2 mins ago', isRead: false },
+    { id: 'n3', type: 'SAFETY', title: 'Safety Reminder', message: 'Remember to keep all communications and payments inside the platform.', time: '1 hour ago', isRead: true },
+    { id: 'n4', type: 'ACCOUNT', title: 'Profile Incomplete', message: 'Please add your emergency contact details to finish your profile.', time: '2 days ago', isRead: true },
+  ];
+
   return (
     <main className="min-h-screen bg-stone-50 pb-20">
-      <header className="bg-white border-b border-stone-200 px-6 py-4 sticky top-0 z-10">
-        <h1 className="text-xl font-bold text-stone-900">Platform Operations Testing Ground</h1>
+      <header className="bg-white border-b border-stone-200 px-6 py-4 sticky top-0 z-10 shadow-sm">
+        <h1 className="text-xl font-bold text-stone-900">Platform Operating System</h1>
       </header>
 
       <div className="max-w-md mx-auto p-6 space-y-12">
@@ -88,7 +98,6 @@ export default function TestUIPage() {
             duration={`${durationHours} Hours`}
             price={pricing.totalAmount}
           />
-          
           <div className="mt-4 p-4 bg-stone-100 rounded-xl text-sm space-y-2">
             <div className="flex justify-between text-stone-600">
               <span>Helper Subtotal (€{hourlyRate} x {durationHours}h)</span>
@@ -152,6 +161,22 @@ export default function TestUIPage() {
         <section>
           <h2 className="text-lg font-bold text-stone-900 mb-4">6. Admin Operations (God Mode)</h2>
           <AdminDashboard />
+        </section>
+
+        <hr className="border-stone-200" />
+
+        {/* --- SECTION 7: COMMUNICATIONS --- */}
+        <section>
+          <h2 className="text-lg font-bold text-stone-900 mb-4">7. Communication Engine</h2>
+          <NotificationFeed initialNotifications={mockNotifications} />
+        </section>
+
+        <hr className="border-stone-200" />
+
+        {/* --- SECTION 8: ANALYTICS & MEASUREMENT --- */}
+        <section>
+          <h2 className="text-lg font-bold text-stone-900 mb-4">8. Platform Analytics (Founder View)</h2>
+          <AnalyticsDashboard />
         </section>
 
       </div>

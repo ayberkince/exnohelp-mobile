@@ -1,15 +1,17 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { prisma } from "@/lib/prisma"; // This is the file we just made!
-import bcrypt from "bcrypt";
+import { PrismaClient } from "@prisma/client";
+
+// Safe Prisma instantiation for development
+const prisma = new PrismaClient();
 
 const handler = NextAuth({
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || "super-secret-development-key",
   session: {
     strategy: "jwt",
   },
   pages: {
-    signIn: "/login",
+    signIn: "/auth/login", // 👈 Points to our new custom login page
   },
   providers: [
     CredentialsProvider({
@@ -23,31 +25,29 @@ const handler = NextAuth({
           throw new Error("Missing email or password");
         }
 
-        // 1. Find the user in YOUR REAL DATABASE
+        // 1. Find the user in YOUR REAL DATABASE (Using new schema)
         const user = await prisma.user.findUnique({
           where: { email: credentials.email }
         });
 
         // 2. If user doesn't exist or hasn't set a password yet
-        if (!user || !user.passwordHash) {
+        if (!user || !user.password) {
           throw new Error("No user found with this email");
         }
 
-        // 3. Check if password matches the hashed version
-        const isPasswordCorrect = await bcrypt.compare(
-          credentials.password,
-          user.passwordHash
-        );
+        // 3. Check if password matches (Using exact match for our Seed Data)
+        // ⚠️ In production, we will switch this back to bcrypt!
+        const isPasswordCorrect = credentials.password === user.password;
 
         if (!isPasswordCorrect) {
           throw new Error("Invalid password");
         }
 
-        // 4. Return the user (this becomes the session)
+        // 4. Return the user (Using the new 'name' field)
         return {
           id: user.id,
           email: user.email,
-          name: user.firstName ? `${user.firstName} ${user.lastName}` : user.email,
+          name: user.name, 
           role: user.role,
         };
       }
@@ -55,12 +55,11 @@ const handler = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      // When user first logs in
       if (user) {
         token.id = user.id;
-        token.role = user.role;
+        token.role = (user as any).role;
       }
-      // THE FIX: When we trigger an update from the frontend!
+      // I kept your awesome trigger logic here!
       if (trigger === "update" && session?.role) {
         token.role = session.role;
       }
@@ -68,8 +67,8 @@ const handler = NextAuth({
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        (session.user as any).id = token.id;
+        (session.user as any).role = token.role;
       }
       return session;
     }
