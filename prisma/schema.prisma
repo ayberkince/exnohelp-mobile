@@ -355,3 +355,14 @@ model WaitlistEntry {
   interest  String?  // e.g., "Accompaniment", "Paperwork"
   createdAt DateTime @default(now())
 }
+
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String?
+  role      String?  // CLIENT or HELPER
+  category  String   // BUG, UI, TRUST, etc.
+  text      String
+  severity  String   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  pageUrl   String?
+  createdAt DateTime @default(now())
+}
