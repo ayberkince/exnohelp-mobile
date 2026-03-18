@@ -345,3 +345,13 @@ model AnalyticsEvent {
   @@index([createdAt])
   @@index([userId])
 }
+
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   // "CLIENT" or "HELPER"
+  district  String?
+  interest  String?  // e.g., "Accompaniment", "Paperwork"
+  createdAt DateTime @default(now())
+}
