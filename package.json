@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "check-route-exports": "node scripts/check-route-exports.js",
+    "...existing scripts...": "...",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",

@@ -2,8 +2,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   eslint: {
-    // 🚨 SPEEDHACK: This tells Next.js to ignore apostrophe errors and just build the app!
     ignoreDuringBuilds: true,
+  },
+  // 🚨 ADD THIS BLOCK HERE
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+      },
+    ],
   },
 };
 
