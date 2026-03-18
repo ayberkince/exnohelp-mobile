@@ -23,7 +23,8 @@ export default function ClientDashboardPage() {
           </div>
           <h2 className="text-xl font-bold text-stone-900 mb-2">No Upcoming Bookings</h2>
           <p className="text-stone-500 mb-6 max-w-sm mx-auto">
-            You don't have any support sessions scheduled right now. Ready to find a helper?
+            {/* 🚨 FIXED HERE */}
+            You don&apos;t have any support sessions scheduled right now. Ready to find a helper?
           </p>
           <Link href="/client/requests" className="inline-block px-6 py-3 bg-stone-900 text-white font-bold rounded-xl hover:bg-stone-800 transition-colors">
             Create a New Request

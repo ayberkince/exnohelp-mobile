@@ -38,9 +38,9 @@ export default function HelperDashboardPage() {
           <p className="text-stone-400 mb-6 max-w-sm mx-auto">
             Clients in your area are looking for support. Apply to your next booking today.
           </p>
-          <button className="px-6 py-3 bg-white text-stone-900 font-bold rounded-xl hover:bg-stone-100 transition-colors">
+          <Link href="/helper/requests" className="inline-block px-6 py-3 bg-white text-stone-900 font-bold rounded-xl hover:bg-stone-100 transition-colors">
             View Requests Board
-          </button>
+          </Link>
         </section>
 
       </div>

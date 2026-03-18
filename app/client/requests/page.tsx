@@ -1,18 +1,26 @@
 import Link from "next/link";
 import { SupportRequestCard } from "@/components/shared/SupportRequestCard";
+import { PrismaClient } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-export default function ClientRequestsPage() {
-  // 💡 For now, we mock the data we seeded in the database. 
-  // In our next step, we will wire this up to fetch directly from Prisma!
-  const mockRequest = {
-    id: "req_1",
-    title: "Need help navigating Charité Campus",
-    categorySlug: "Appointment Accompaniment",
-    city: "Berlin",
-    district: "Mitte",
-    requestedDate: new Date('2026-03-20T10:00:00Z'),
-    description: "Looking for a friendly face to help me find the right building and wait with me during my appointment.",
-  };
+const prisma = new PrismaClient();
+
+export default async function ClientRequestsPage() {
+  // 1. Find out who is logged in
+  const session = await getServerSession(authOptions);
+  
+  // 2. Get their Client Profile ID
+  const user = await prisma.user.findUnique({
+    where: { email: session?.user?.email as string },
+    include: { clientProfile: true }
+  });
+
+  // 3. Fetch their REAL requests from Supabase
+  const realRequests = await prisma.supportRequest.findMany({
+    where: { clientId: user?.clientProfile?.id },
+    orderBy: { requestedDate: 'asc' } // Show soonest requests first
+  });
 
   return (
     <main className="min-h-screen bg-stone-50 pb-20">
@@ -33,7 +41,15 @@ export default function ClientRequestsPage() {
 
         <div className="space-y-4">
           <h2 className="text-lg font-bold text-stone-900 border-b border-stone-200 pb-2">Open Requests</h2>
-          <SupportRequestCard request={mockRequest} />
+          
+          {/* 4. Map over the real data! */}
+          {realRequests.length === 0 ? (
+             <p className="text-stone-500 italic">No open requests. Create one above!</p>
+          ) : (
+             realRequests.map((req) => (
+               <SupportRequestCard key={req.id} request={req} />
+             ))
+          )}
         </div>
 
       </div>
