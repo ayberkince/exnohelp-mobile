@@ -35,35 +35,30 @@ export default function NewRequestPage() {
           <p className="text-stone-500 mt-2">Tell us what you need help with, and we will find the right helper.</p>
         </header>
 
-        {/* 🚨 Notice the 'action={clientAction}' here! */}
         <form action={clientAction} className="bg-white p-8 rounded-3xl shadow-sm border border-stone-200 space-y-6">
           
-          <div>
-            <label className="block text-sm font-bold text-stone-700 mb-2">Request Title</label>
-            <input 
-              type="text" 
-              name="title" /* 👈 REQUIRED FOR SERVER ACTIONS */
-              placeholder="e.g., Grocery shopping assistance"
-              className="w-full p-4 border border-stone-200 rounded-xl bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              required
-            />
-          </div>
+          {/* 🚨 HIDDEN FIELD: We hardcode Berlin for the Launch Wedge */}
+          <input type="hidden" name="city" value="Berlin" />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold text-stone-700 mb-2">Date</label>
-              <input 
-                type="date" 
-                name="date" /* 👈 REQUIRED FOR SERVER ACTIONS */
-                className="w-full p-4 border border-stone-200 rounded-xl bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              <label className="block text-sm font-bold text-stone-700 mb-2">Service Category</label>
+              <select 
+                name="categorySlug" 
+                className="w-full p-4 border border-stone-200 rounded-xl bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none"
                 required
-              />
+              >
+                <option value="">Select a service...</option>
+                <option value="accompaniment">Accompaniment</option>
+                <option value="waiting-support">Waiting Room Support</option>
+                <option value="post-appointment">Post-Appointment Help</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-bold text-stone-700 mb-2">District</label>
               <input 
                 type="text" 
-                name="district" /* 👈 REQUIRED FOR SERVER ACTIONS */
+                name="district" 
                 placeholder="e.g., Mitte"
                 className="w-full p-4 border border-stone-200 rounded-xl bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 required
@@ -72,9 +67,30 @@ export default function NewRequestPage() {
           </div>
 
           <div>
+            <label className="block text-sm font-bold text-stone-700 mb-2">Request Title</label>
+            <input 
+              type="text" 
+              name="title" 
+              placeholder="e.g., Grocery shopping assistance"
+              className="w-full p-4 border border-stone-200 rounded-xl bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-stone-700 mb-2">Date Needed</label>
+            <input 
+              type="date" 
+              name="date" 
+              className="w-full p-4 border border-stone-200 rounded-xl bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              required
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-bold text-stone-700 mb-2">Details & Instructions</label>
             <textarea 
-              name="description" /* 👈 REQUIRED FOR SERVER ACTIONS */
+              name="description" 
               rows={4}
               placeholder="Please describe exactly what you need help with..."
               className="w-full p-4 border border-stone-200 rounded-xl bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
@@ -90,7 +106,6 @@ export default function NewRequestPage() {
             {isLoading ? "Publishing Request..." : "Publish Request"}
           </button>
         </form>
-
       </div>
     </main>
   );

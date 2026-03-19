@@ -1,10 +1,13 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
+import { authOptions } from "../../auth/[...nextauth]/route"; // 🚨 ADJUST PATH as needed
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
+    // 🚨 We must pass authOptions here for the session to be decoded correctly
+    const session = await getServerSession(authOptions); 
+    
     if (!session?.user?.email) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
@@ -20,10 +23,13 @@ export async function POST(req: Request) {
       return new NextResponse("User not found", { status: 404 });
     }
 
-    // 2. Update the User Role
+    // 2. Update the User Role AND set isOnboarded to true
     await prisma.user.update({
       where: { id: user.id },
-      data: { role: role }
+      data: {
+        role,
+        isOnboarded: true
+      }
     });
 
     // 3. Create or Update the specific Profile table
@@ -31,15 +37,15 @@ export async function POST(req: Request) {
       await prisma.clientProfile.upsert({
         where: { userId: user.id },
         update: {
-          city: city,           // <--- FIXED: changed from defaultCity
-          district: district,   // <--- Added district so we save it!
+          city: city,
+          district: district,
           emergencyContactName: emergencyName,
           emergencyContactPhone: emergencyPhone,
         },
         create: {
           userId: user.id,
-          city: city,           // <--- FIXED
-          district: district,   // <--- Added district
+          city: city,
+          district: district,
           emergencyContactName: emergencyName,
           emergencyContactPhone: emergencyPhone,
         },

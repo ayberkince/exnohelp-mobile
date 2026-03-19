@@ -1,0 +1,30 @@
+import { prisma } from "@/lib/prisma.ts";
+
+/**
+ * The "Truth Meter" for Private Beta.
+ * Calculates the success rate of the core marketplace loop.
+ */
+export async function getBetaDecisionMetrics() {
+  const totalRequests = await prisma.supportRequest.count();
+  const convertedToBooking = await prisma.booking.count();
+  const completedBookings = await prisma.booking.count({ 
+    where: { status: "COMPLETED" } 
+  });
+
+  const conversionRate = totalRequests > 0 
+    ? (convertedToBooking / totalRequests) * 100 
+    : 0;
+
+  const successRate = convertedToBooking > 0 
+    ? (completedBookings / convertedToBooking) * 100 
+    : 0;
+
+  return {
+    conversionRate: `${conversionRate.toFixed(1)}%`,
+    successRate: `${successRate.toFixed(1)}%`,
+    totalRequests,
+    completedBookings,
+    // Decision logic based on Day 25 criteria
+    recommendation: conversionRate > 50 && successRate > 70 ? "EXPAND" : "HOLD/REPAIR"
+  };
+}

@@ -12,6 +12,7 @@ datasource db {
 }
 
 // --- ENUMS (State Machines) ---
+
 enum Role {
   CLIENT
   HELPER
@@ -27,13 +28,13 @@ enum RequestStatus {
 enum BookingStatus {
   PENDING
   CONFIRMED
+  IN_PROGRESS
   COMPLETED
   CANCELED_BY_CLIENT
   CANCELED_BY_HELPER
   CANCELED_BY_PLATFORM
 }
 
-// Day 6: Financial State Machines
 enum PaymentStatus {
   UNPAID
   AUTHORIZED
@@ -61,7 +62,6 @@ enum RefundStatus {
   COMPLETED
 }
 
-// Day 7: Trust & Safety State Machines
 enum ReportType {
   NO_SHOW
   SEVERE_LATENESS
@@ -91,7 +91,6 @@ enum EnforcementLevel {
   BANNED
 }
 
-// Day 8: Operator State Machines
 enum VerificationStatus {
   PENDING
   APPROVED
@@ -99,7 +98,6 @@ enum VerificationStatus {
   NEEDS_ACTION
 }
 
-// Day 9: Communication State Machines
 enum NotificationType {
   BOOKING
   PAYMENT
@@ -108,51 +106,46 @@ enum NotificationType {
   SYSTEM
 }
 
-// --- AUTHENTICATION MODELS (NextAuth) ---
+// --- AUTHENTICATION & IDENTITY MODELS ---
+
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          Role?
+  id              String           @id @default(cuid())
+  name            String?
+  email           String?          @unique
+  emailVerified   DateTime?
+  image           String?
+  password        String?
+  role            Role?
+  isOnboarded     Boolean          @default(false)
   
-  // Day 7: Platform enforcement
-  enforcement   EnforcementLevel @default(NONE)
+  enforcement     EnforcementLevel @default(NONE)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  accounts      Account[]
-  sessions      Session[]
-  clientProfile ClientProfile?
-  helperProfile HelperProfile?
-
-  // Day 7: Report Tracking
-  reportsFiled   Report[] @relation("Reporter")
-  reportsAgainst Report[] @relation("ReportedUser")
-
-  // Day 9: Communication Tracking
-  notifications  Notification[]
-
-  // Day 10: Analytics & Telemetry
+  accounts        Account[]
+  sessions        Session[]
+  clientProfile   ClientProfile?
+  helperProfile   HelperProfile?
+  
+  reportsFiled    Report[]         @relation("Reporter")
+  reportsAgainst  Report[]         @relation("ReportedUser")
+  notifications   Notification[]
   analyticsEvents AnalyticsEvent[]
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String? @db.Text
-  access_token       String? @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String? @db.Text
-  session_state      String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -168,6 +161,7 @@ model Session {
 }
 
 // --- PLATFORM PROFILES ---
+
 model ClientProfile {
   id                    String  @id @default(cuid())
   userId                String  @unique
@@ -182,13 +176,11 @@ model ClientProfile {
 }
 
 model HelperProfile {
-  id       String  @id @default(cuid())
-  userId   String  @unique
-  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  city     String?
-  district String?
-
-  // Day 8: Verification Ops
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city               String?
+  district           String?
   verificationStatus VerificationStatus @default(PENDING)
   adminNotes         String?            @db.Text
 
@@ -196,104 +188,93 @@ model HelperProfile {
   payouts  Payout[] 
 }
 
-// --- MARKETPLACE ENGINE ---
+// --- MARKETPLACE & TRANSACTION ENGINE ---
+
 model SupportRequest {
-  id            String        @id @default(cuid())
-  clientId      String
-  client        ClientProfile @relation(fields: [clientId], references: [id])
-  categorySlug  String
-  title         String
-  description   String?
-  requestedDate DateTime
-  city          String
-  district      String
-  status        RequestStatus @default(OPEN)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                  String         @id @default(cuid())
+  clientId            String
+  client              ClientProfile  @relation(fields: [clientId], references: [id])
+  categorySlug        String
+  title               String
+  description         String?        @db.Text
+  requestedDate       DateTime
+  city                String
+  district            String
+  status              RequestStatus  @default(OPEN)
+  offered_total_price Float?         @default(0.0)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 
   booking Booking?
 }
 
 model Booking {
-  id        String          @id @default(cuid())
-  clientId  String
-  client    ClientProfile   @relation(fields: [clientId], references: [id])
-  helperId  String
-  helper    HelperProfile   @relation(fields: [helperId], references: [id])
-  requestId String?         @unique
-  request   SupportRequest? @relation(fields: [requestId], references: [id])
+  id           String          @id @default(cuid())
+  clientId     String
+  client       ClientProfile   @relation(fields: [clientId], references: [id])
+  helperId     String
+  helper       HelperProfile   @relation(fields: [helperId], references: [id])
+  requestId    String?         @unique
+  request      SupportRequest? @relation(fields: [requestId], references: [id])
 
-  scheduledAt DateTime
-  status      BookingStatus @default(PENDING)
+  scheduledAt  DateTime
+  status       BookingStatus   @default(PENDING)
 
-  // Day 6: Pricing Logistics
-  helperAmount Float @default(0.0)
-  platformFee  Float @default(0.0)
-  totalAmount  Float @default(0.0)
+  // Financial Ledger
+  helperAmount Float           @default(0.0)
+  platformFee  Float           @default(0.0)
+  totalAmount  Float           @default(0.0)
 
-  // Day 6: Financial Links
-  payment Payment?
-  payout  Payout?
+  payment      Payment?
+  payout       Payout?
+  reports      Report[]
+  conversation Conversation?
 
-  // Day 7: Incident Tracking Links
-  reports Report[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 }
 
-// --- DAY 6: FINANCIAL ENGINE ---
+// --- FINANCE & TRUST ENGINE ---
+
 model Payment {
-  id        String  @id @default(cuid())
-  bookingId String  @unique
-  booking   Booking @relation(fields: [bookingId], references: [id])
-
-  amount       Float
-  status       PaymentStatus @default(UNPAID)
-  refundStatus RefundStatus  @default(NONE)
-
-  stripePaymentIntentId String? @unique
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                    String        @id @default(cuid())
+  bookingId             String        @unique
+  booking               Booking       @relation(fields: [bookingId], references: [id])
+  amount                Float
+  status                PaymentStatus @default(UNPAID)
+  refundStatus          RefundStatus  @default(NONE)
+  stripePaymentIntentId String?       @unique
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 }
 
 model Payout {
-  id        String        @id @default(cuid())
-  bookingId String        @unique
-  booking   Booking       @relation(fields: [bookingId], references: [id])
-  helperId  String
-  helper    HelperProfile @relation(fields: [helperId], references: [id])
-
-  amount Float
-  status PayoutStatus @default(NOT_READY)
-
-  stripeTransferId String? @unique
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String       @id @default(cuid())
+  bookingId        String       @unique
+  booking          Booking      @relation(fields: [bookingId], references: [id])
+  helperId         String
+  helper           HelperProfile @relation(fields: [helperId], references: [id])
+  amount           Float
+  status           PayoutStatus @default(NOT_READY)
+  stripeTransferId String?      @unique
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 }
 
-// --- DAY 7 & 8: TRUST, SAFETY & OPS ENGINE ---
 model Report {
-  id          String       @id @default(cuid())
-  type        ReportType
-  status      ReportStatus @default(OPEN)
-  description String       @db.Text
-  
-  reporterId  String
-  reporter    User         @relation("Reporter", fields: [reporterId], references: [id])
-  
+  id             String       @id @default(cuid())
+  type           ReportType
+  status         ReportStatus @default(OPEN)
+  description    String       @db.Text
+  reporterId     String
+  reporter       User         @relation("Reporter", fields: [reporterId], references: [id])
   reportedUserId String?
-  reportedUser   User?     @relation("ReportedUser", fields: [reportedUserId], references: [id])
-  
-  bookingId   String?
-  booking     Booking?     @relation(fields: [bookingId], references: [id])
-  
-  adminNotes  String?      @db.Text
-  
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  reportedUser   User?        @relation("ReportedUser", fields: [reportedUserId], references: [id])
+  bookingId      String?
+  booking        Booking?     @relation(fields: [bookingId], references: [id])
+  adminNotes     String?      @db.Text
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   adminActions AdminAction[]
 }
@@ -302,45 +283,64 @@ model AdminAction {
   id          String   @id @default(cuid())
   reportId    String?
   report      Report?  @relation(fields: [reportId], references: [id])
-  
   adminId     String   
   actionTaken String   
   notes       String?  @db.Text
-  
   createdAt   DateTime @default(now())
 }
 
-// --- DAY 9: COMMUNICATION ENGINE ---
+// --- COMMUNICATION & MESSAGING ---
+
+model Conversation {
+  id            String    @id @default(cuid())
+  bookingId     String    @unique
+  booking       Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  clientUserId  String
+  helperUserId  String
+  messages      Message[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([clientUserId])
+  @@index([helperUserId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  text           String       @db.Text
+  isSystem       Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  readAt         DateTime?
+}
+
 model Notification {
   id        String           @id @default(cuid())
   userId    String
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
   type      NotificationType
   title     String
   message   String           @db.Text
   isRead    Boolean          @default(false)
   link      String?          
-  
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 }
 
-// --- DAY 10: ANALYTICS & TELEMETRY ENGINE ---
-model AnalyticsEvent {
-  id          String   @id @default(cuid())
-  eventName   String   
-  
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userRole    String?  
-  
-  targetId    String?  
-  properties  Json?    
-  
-  createdAt   DateTime @default(now())
+// --- UTILITY & ANALYTICS ---
 
-  // Indexes to make graph generation fast!
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  eventName  String   
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userRole   String?  
+  targetId   String?  
+  properties Json?    
+  createdAt  DateTime @default(now())
+
   @@index([eventName])
   @@index([createdAt])
   @@index([userId])
@@ -350,19 +350,19 @@ model WaitlistEntry {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
-  role      String   // "CLIENT" or "HELPER"
+  role      String   
   district  String?
-  interest  String?  // e.g., "Accompaniment", "Paperwork"
+  interest  String?  
   createdAt DateTime @default(now())
 }
 
 model Feedback {
   id        String   @id @default(cuid())
   userId    String?
-  role      String?  // CLIENT or HELPER
-  category  String   // BUG, UI, TRUST, etc.
+  role      String?  
+  category  String   
   text      String
-  severity  String   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  severity  String   @default("MEDIUM") 
   pageUrl   String?
   createdAt DateTime @default(now())
 }

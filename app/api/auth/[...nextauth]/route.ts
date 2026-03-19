@@ -3,9 +3,10 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaClient } from "@prisma/client"
 import { AuthOptions } from "next-auth"
 
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/prisma";
 
-const authOptions: AuthOptions = {
+// 🚨 We export this so we can use it in getServerSession(authOptions)
+export const authOptions: AuthOptions = {
   secret: process.env.NEXTAUTH_SECRET ?? "dev-secret",
   session: {
     strategy: "jwt" as const,
@@ -41,31 +42,43 @@ const authOptions: AuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
+          isOnboarded: true
         }
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
+      // Initial sign in
       if (user) {
-        token.id = (user as any).id
-        token.role = (user as any).role
+        token.id = user.id;
+        // @ts-ignore
+        token.role = user.role;
+        // @ts-ignore
+        token.isOnboarded = user.isOnboarded;
       }
-      if (trigger === "update" && session?.role) {
-        token.role = session.role
+
+      // 🚨 Handle the 'update' trigger from the Onboarding Wizard
+      if (trigger === "update" && session) {
+        if (session.role) token.role = session.role;
+        token.isOnboarded = true; // Once they update via wizard, they are onboarded
       }
-      return token
+
+      return token;
     },
     async session({ session, token }) {
-      if (session.user) {
-        ;(session.user as any).id = token.id
-        ;(session.user as any).role = token.role
+      if (token && session.user) {
+        // @ts-ignore
+        session.user.id = token.id;
+        // @ts-ignore
+        session.user.role = token.role;
+        // @ts-ignore
+        session.user.isOnboarded = token.isOnboarded;
       }
-      return session
+      return session;
     },
   },
 }
 
 const handler = NextAuth(authOptions)
-
 export { handler as GET, handler as POST }

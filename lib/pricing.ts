@@ -1,20 +1,14 @@
-// lib/pricing.ts
+const PLATFORM_FEE_PERCENTAGE = 0.15;
 
-const PLATFORM_FEE_PERCENTAGE = 0.15; // Exnohelp takes 15%
-
-export function calculateBookingPrice(helperHourlyRate: number, durationHours: number) {
-  // 1. What the Helper earns
-  const helperAmount = helperHourlyRate * durationHours;
-  
-  // 2. What the Platform earns
-  const platformFee = helperAmount * PLATFORM_FEE_PERCENTAGE;
-  
-  // 3. What the Client pays
-  const totalAmount = helperAmount + platformFee;
+export function calculateBookingPrice(hourlyRate: number, durationHours: number = 1) {
+  const helperSubtotal = hourlyRate * durationHours;
+  const platformFee = helperSubtotal * PLATFORM_FEE_PERCENTAGE;
+  const totalWeight = helperSubtotal + platformFee;
 
   return {
-    helperAmount,
-    platformFee,
-    totalAmount
+    helperSubtotal: Math.round(helperSubtotal * 100) / 100,
+    platformFee: Math.round(platformFee * 100) / 100,
+    totalPrice: Math.round(totalWeight * 100) / 100,
+    currency: "EUR"
   };
 }
